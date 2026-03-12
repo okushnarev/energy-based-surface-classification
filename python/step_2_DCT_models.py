@@ -34,7 +34,8 @@ if __name__ == '__main__':
             dct = DCT(
                 data=_df['mean'],
                 cutoff_amount=3,
-                range_width=355
+                range_min=_df['movedir'].min(),
+                range_max=_df['movedir'].max(),
             )
             dct_models[surf] = dct
             dct_models_std[surf] = _df['std'].mean()

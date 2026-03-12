@@ -1,50 +1,55 @@
+from typing import Iterable
+
 import numpy as np
 import scipy as sci
 
 
 class DCT:
-    def __init__(self, data, cutoff_amount: int = None, range_width=None):
-        self.coeffs = None
-        self.find_coeffs(data, cutoff_amount)
-        if range_width is not None:
-            self.scale = range_width
+    """
+    A class that performs a Discrete Cosine Transform (DCT) on discrete data
+    and generates a continuous, analytical cosine sum function
+    """
+
+    def __init__(self, data: Iterable[float], cutoff_amount: int = None, range_min: float = None,
+                 range_max: float = None):
+        """
+        Initializes the DCT object, calculates coefficients, and optionally filters them
+        :param data: The discrete set of Y-values (signal amplitude) to transform
+        :param cutoff_amount: The number of largest DCT coefficients to keep. All other coefficients are zeroed out. If None, all coefficients are kept
+        :param range_min: The minimum X-coordinate of the data (required for scaling)
+        :param range_max: The maximum X-coordinate of the data (required for scaling)
+        """
+        self.range_min = range_min
+        self.range_max = range_max
+
+        # Calc DCT coefficients
+        self.coefficients = sci.fft.dct(data)
+        # Filter coefficients if needed
+        if cutoff_amount is not None:
+            indices, _ = zip(*sorted(enumerate(self.coefficients), key=lambda x: abs(x[1]), reverse=True))
+            for idx in indices[cutoff_amount:]:
+                self.coefficients[idx] = 0
 
     def __call__(self, *args, **kwargs):
+        """
+        Allows the class instance to be called directly as a mathematical function
+        See `numpy_func` for docs
+        """
         return self.numpy_func(*args, **kwargs)
 
-    def find_coeffs(self, data, cutoff_amount: int = None):
+    def numpy_func(self, x: float | Iterable[float], scaled: bool = False):
         """
-        Performs DCT on data, then create a cosine sum expression.
-        Cut off all DCT coefficient less than thresh.
-        Requires Sympy, Scipy, Numpy
+        Evaluates the analytical cosine sum at the given point(s)
 
-        :param data: Discrete set of data
-        :param cutoff_amount: Used instead of param 'thresh' to cut off coefficients. Keeps specified amount of coefficients
-        :return: Cosine sum expression in sympy
+        :param x: The point(s) to evaluate the function. Can be a single float or an array of floats
+        :param scaled: If True, maps  X-coordinates to the DCT index space using `range_min` and `range_max`
+        :return: Y-value(s) evaluated at `x`
         """
-        coeffs = sci.fft.dct(data)
-        indicies = list(range(0, len(coeffs)))
-        indicies, _ = zip(*sorted(zip(indicies, coeffs), key=lambda x: np.abs(x[1]), reverse=True))
-        if cutoff_amount is not None:
-            for idx in indicies[cutoff_amount:]:
-                coeffs[idx] = 0
-
-        self.coeffs = coeffs
-
-    @property
-    def scale(self):
-        return self._scale
-
-    @scale.setter
-    def scale(self, range_width):
-        self._scale = (len(self.coeffs) - 1) / range_width
-
-    def numpy_func(self, x, scaled=False):
-        x = x * (self.scale if scaled else 1)
-        N = len(self.coeffs)
-        res = self.coeffs[0] / 2
+        N = len(self.coefficients)
+        if scaled:
+            x = (x - self.range_min) / (self.range_max - self.range_min) * (N - 1)
+        result = self.coefficients[0] / 2
         for n in range(1, N):
-            res += self.coeffs[n] * np.cos((n / N * np.pi * (x + 1 / 2)))
-        res *= (1 / N)
-
-        return res
+            result += self.coefficients[n] * np.cos((n / N * np.pi * (x + 1 / 2)))
+        result *= (1 / N)
+        return result
