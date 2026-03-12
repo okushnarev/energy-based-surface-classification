@@ -25,8 +25,9 @@ class DCT:
         coeffs = sci.fft.dct(data)
         indicies = list(range(0, len(coeffs)))
         indicies, _ = zip(*sorted(zip(indicies, coeffs), key=lambda x: np.abs(x[1]), reverse=True))
-        for idx in indicies[cutoff_amount:]:
-            coeffs[idx] = 0
+        if cutoff_amount is not None:
+            for idx in indicies[cutoff_amount:]:
+                coeffs[idx] = 0
 
         self.coeffs = coeffs
 
